@@ -38,8 +38,20 @@ class Musicode:
         ]
 
     def get_sine_wave(self, frequency, duration):
-        t = np.linspace(0, duration, int(self.sample_rate * duration), False)
+        num_samples = int(self.sample_rate * duration)
+        t = np.linspace(0, duration, num_samples, False)
         wave = self.amplitude * np.sin(2 * np.pi * frequency * t)
+
+        # Apply a fade-in and fade-out to prevent clicking
+        fade_duration = 0.01  # 10ms
+        fade_len = int(fade_duration * self.sample_rate)
+        
+        if num_samples > fade_len * 2:
+            fade_in = np.linspace(0, 1, fade_len)
+            fade_out = np.linspace(1, 0, fade_len)
+            wave[:fade_len] *= fade_in
+            wave[-fade_len:] *= fade_out
+
         return np.ascontiguousarray(np.array([wave, wave]).T.astype(np.int16))
 
     def play_note(self, frequency, duration):
