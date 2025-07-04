@@ -110,22 +110,47 @@ class Musicode:
         if time_spent < self.beat_duration:
             time.sleep(self.beat_duration - time_spent)
 
-    def play_live(self):
+    def play_live(self, command_queue, status_queue):
         print(f"Playing '{self.file_path}' at {self.tempo} BPM. Press Ctrl+C to stop.")
+        playing = True
+        line_index = 0
         while True:
             try:
+                # Check for commands from the UI
+                if not command_queue.empty():
+                    command = command_queue.get()
+                    if command == "play":
+                        playing = True
+                        print("Music resumed.")
+                    elif command == "pause":
+                        playing = False
+                        print("Music paused.")
+                    elif command == "stop":
+                        print("Music stopped.")
+                        break
+
+                if not playing:
+                    time.sleep(0.1) # Sleep briefly while paused
+                    continue
+
                 lines = self._load_music_file()
                 if not lines:
                     time.sleep(5) # Wait before retrying if file not found
                     continue
                 
-                for line in lines:
-                    self._play_line(line)
+                # Ensure line_index is within bounds
+                if line_index >= len(lines):
+                    line_index = 0 # Loop back to the beginning
+
+                current_line = lines[line_index]
+                status_queue.put({"line_index": line_index})
+                self._play_line(current_line)
+                line_index += 1
 
             except Exception as e:
                 print(f"An error occurred: {e}")
                 time.sleep(5)
 
-if __name__ == "__main__":
-    music_engine = Musicode(config_path='/home/josh/Code/Musicode/config.json')
-    music_engine.play_live()
+def start_music_engine(config_path, command_queue, status_queue):
+    music_engine = Musicode(config_path=config_path)
+    music_engine.play_live(command_queue, status_queue)
